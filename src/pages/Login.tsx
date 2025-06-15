@@ -6,21 +6,17 @@ function Login() {
 
   return (
     <div style={{ textAlign: "center", marginTop: "100px" }}>
-      <h1>시간표 서비스</h1>
-      <button
+      <h1>상근 시간표 최적화 Tool🔨</h1>
+      <img
+        src="/kakao_login_large_wide.png"
+        alt="카카오 로그인"
         style={{
-          background: "#FEE500",
-          border: "none",
-          borderRadius: "8px",
-          padding: "12px 24px",
-          fontWeight: "bold",
-          fontSize: "16px",
+          width: "370px",
           cursor: "pointer",
+          marginTop: "32px",
         }}
         onClick={handleKakaoLogin}
-      >
-        카카오로 로그인
-      </button>
+      />
     </div>
   );
 }
