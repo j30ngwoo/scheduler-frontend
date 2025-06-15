@@ -13,48 +13,35 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Docker 이미지 빌드
       - name: Build Docker image
         run: docker build -t react-scheduler-app:latest .
 
-      # 도커 이미지 tar로 저장
       - name: Save Docker image to tar
         run: docker save react-scheduler-app:latest -o react-scheduler-app.tar
 
       - name: Install rsync
         run: sudo apt-get update && sudo apt-get install -y rsync
 
-      - name: Load .env and export variables
-        run: |
-          echo "${{ secrets.ENV_FILE }}" > .env
-          source .env
-          echo "SSH_HOST=$SSH_HOST" >> $GITHUB_ENV
-          echo "SSH_PORT=$SSH_PORT" >> $GITHUB_ENV
-          echo "SSH_USER=$SSH_USER" >> $GITHUB_ENV
-          echo "${{ secrets.SSH_KEY }}" > private_key
-          chmod 600 private_key
-
-      # ssh 키 등록
       - name: Add SSH host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -p ${{ env.SSH_PORT }} ${{ env.SSH_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
       # 이미지 파일 서버로 전송
       - name: Transfer Docker image
         run: |
-          echo "${{ env.SSH_KEY }}" > private_key
+          echo "${{ secrets.SSH_KEY }}" > private_key
           chmod 600 private_key
-          rsync -avz -e "ssh -i private_key -p ${{ env.SSH_PORT }}" react-scheduler-app.tar ${{ env.SSH_USER }}@${{ env.SSH_HOST }}:~/
+          rsync -avz -e "ssh -i private_key -p ${{ secrets.SSH_PORT }}" react-scheduler-app.tar ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:~/
 
       # 서버에서 도커 이미지 로드 & 컨테이너 재구동
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ env.SSH_HOST }}
-          port: ${{ env.SSH_PORT }}
-          username: ${{ env.SSH_USER }}
-          key: ${{ env.SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             docker load -i ~/react-scheduler-app.tar
 
