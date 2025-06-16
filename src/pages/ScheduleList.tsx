@@ -31,6 +31,7 @@ function ScheduleList() {
         setSchedules(res.data.data || []); // ApiResponse에 data로 들어옴
       })
       .catch((err) => {
+        console.error(err);
         alert("시간표 목록을 불러오지 못했습니다.");
         window.location.href = "/login";
       })
