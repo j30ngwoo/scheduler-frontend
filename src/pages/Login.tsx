@@ -1,6 +1,18 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 function Login() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // accessToken 있으면 스케줄로 바로 이동
+    const accessToken = localStorage.getItem("access_token");
+    if (accessToken) {
+      navigate("/schedules");
+    }
+  }, [navigate]);
+
   const handleKakaoLogin = () => {
-    // 배포/개발 환경 상관없이 /api 경로 사용 (vite/nginx 프록시로 해결)
     window.location.href = "/api/auth/kakao/login";
   };
 
@@ -20,4 +32,5 @@ function Login() {
     </div>
   );
 }
+
 export default Login;

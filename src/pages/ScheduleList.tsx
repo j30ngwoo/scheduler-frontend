@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import LogoutButton from "../components/LogoutButton";
 
 type Schedule = {
   code: string;
@@ -12,6 +13,12 @@ type Schedule = {
 function ScheduleList() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 폼 모달/상태
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     const accessToken = localStorage.getItem("access_token");
@@ -38,11 +45,84 @@ function ScheduleList() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div style={{textAlign: "center"}}>불러오는 중...</div>;
+  // 새 시간표 생성 핸들러
+  const handleCreate = () => setShowForm(true);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const accessToken = localStorage.getItem("access_token");
+    try {
+      await axios.post(
+        "/api/schedules",
+        { title, startDate, endDate },
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      alert("시간표가 생성되었습니다!");
+      setShowForm(false);
+      window.location.reload(); // 간단하게 새로고침으로 목록 갱신
+    } catch (err) {
+      alert("생성 실패!");
+    }
+  };
+
+  if (loading) return <div style={{ textAlign: "center" }}>불러오는 중...</div>;
 
   return (
     <div style={{ maxWidth: 600, margin: "40px auto" }}>
-      <h2>내 시간표 목록</h2>
+      <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8
+      }}>
+        <h2 style={{ margin: 0 }}>내 시간표 목록</h2>
+        <LogoutButton />
+      </div>
+      <button style={{ marginBottom: 20 }} onClick={handleCreate}>
+        + 새 시간표 만들기
+      </button>
+
+      {/* 새 시간표 폼 */}
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          style={{ marginBottom: 20, border: "1px solid #ccc", padding: 16 }}
+        >
+          <div>
+            <input
+              placeholder="제목"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />{" "}
+            ~{" "}
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              required
+            />
+          </div>
+          <button type="submit" style={{ marginTop: 12 }}>
+            생성
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            style={{ marginLeft: 8, marginTop: 12 }}
+          >
+            취소
+          </button>
+        </form>
+      )}
+
       {schedules.length === 0 ? (
         <div>등록된 시간표가 없습니다.</div>
       ) : (
@@ -53,7 +133,7 @@ function ScheduleList() {
               <div style={{ color: "#888", fontSize: 14 }}>
                 {s.startDate} ~ {s.endDate}
               </div>
-              {/* 추후 상세 페이지/삭제 버튼 등 추가 가능 */}
+              {/* 상세/삭제 등 추후 추가 */}
             </li>
           ))}
         </ul>
