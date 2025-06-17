@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import api from "../lib/api";
 import LogoutButton from "../components/LogoutButton";
 
 type Schedule = {
@@ -7,61 +7,38 @@ type Schedule = {
   title: string;
   startDate: string;
   endDate: string;
-  // 필요시 다른 필드 추가
 };
 
 function ScheduleList() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // 폼 모달/상태
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("access_token");
-    if (!accessToken) {
-      alert("로그인이 필요합니다.");
-      window.location.href = "/login";
-      return;
-    }
-
-    axios
-      .get("/api/schedules", {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
+    api
+      .get("/api/schedules")
       .then((res) => {
-        setSchedules(res.data.data || []); // ApiResponse에 data로 들어옴
+        setSchedules(res.data.data || []);
       })
       .catch((err) => {
+        // 401 등은 인터셉터에서 처리됨
         console.error(err);
-        alert("시간표 목록을 불러오지 못했습니다.");
-        window.location.href = "/login";
       })
       .finally(() => setLoading(false));
   }, []);
 
-  // 새 시간표 생성 핸들러
   const handleCreate = () => setShowForm(true);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const accessToken = localStorage.getItem("access_token");
     try {
-      await axios.post(
-        "/api/schedules",
-        { title, startDate, endDate },
-        {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        }
-      );
+      await api.post("/api/schedules", { title, startDate, endDate });
       alert("시간표가 생성되었습니다!");
       setShowForm(false);
-      window.location.reload(); // 간단하게 새로고침으로 목록 갱신
+      window.location.reload();
     } catch (err) {
       alert("생성 실패!");
     }
@@ -72,7 +49,7 @@ function ScheduleList() {
   return (
     <div style={{ maxWidth: 600, margin: "40px auto" }}>
       <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8
+        display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8
       }}>
         <h2 style={{ margin: 0 }}>내 시간표 목록</h2>
         <LogoutButton />
@@ -81,7 +58,6 @@ function ScheduleList() {
         + 새 시간표 만들기
       </button>
 
-      {/* 새 시간표 폼 */}
       {showForm && (
         <form
           onSubmit={handleSubmit}
@@ -133,7 +109,6 @@ function ScheduleList() {
               <div style={{ color: "#888", fontSize: 14 }}>
                 {s.startDate} ~ {s.endDate}
               </div>
-              {/* 상세/삭제 등 추후 추가 */}
             </li>
           ))}
         </ul>

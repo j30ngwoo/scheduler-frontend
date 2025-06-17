@@ -6,7 +6,6 @@ function LoginCallback() {
   const location = useLocation();
 
   useEffect(() => {
-    // accessToken 쿼리에서 파싱 (ex. /login/callback?accessToken=xxx)
     const params = new URLSearchParams(location.search);
     const accessToken = params.get("accessToken");
 

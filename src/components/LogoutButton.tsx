@@ -1,15 +1,11 @@
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import api from "../lib/api";
 
 function LogoutButton() {
   const navigate = useNavigate();
   const handleLogout = async () => {
-    const accessToken = localStorage.getItem("access_token");
     try {
-      await axios.post("/api/auth/logout", null, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        withCredentials: true
-      });
+      await api.post("/api/auth/logout", {}, { withCredentials: true });
     } catch (e) {}
     localStorage.removeItem("access_token");
     navigate("/login");
