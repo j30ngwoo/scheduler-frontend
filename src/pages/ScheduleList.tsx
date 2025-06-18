@@ -33,7 +33,7 @@ function ScheduleList() {
     setTitle("");
     setStartHour(12);
     setEndHour(17);
-    setMaxHours(5);
+    setMaxHours(2);
     setShowForm(true);
   };
 
