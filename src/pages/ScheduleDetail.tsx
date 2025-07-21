@@ -477,7 +477,6 @@ function ScheduleDetail() {
     const days = ["월", "화", "수", "목", "금"];
     const hours = Array.from({ length: currentSchedule.endHour - currentSchedule.startHour }, (_, i) => currentSchedule.startHour + i);
     const bitsToRender = isInputGrid ? displayBits : bits;
-    const slotsPerDay = hours.length * 2;
 
     return (
       <GridWrapper>
@@ -487,7 +486,7 @@ function ScheduleDetail() {
           {hours.map((hour, hourIndex) => (
             <React.Fragment key={hour}>
               <GridTimeCell>{hour}:00</GridTimeCell>
-              {days.map((day, dayIndex) => (
+              {days.map((_, dayIndex) => (
                 <GridSlotColumn key={dayIndex}>
                   {[0, 1].map((_, halfHourIndex) => {
                     const bitIndex = (dayIndex * hours.length * 2) + (hourIndex * 2) + halfHourIndex;
