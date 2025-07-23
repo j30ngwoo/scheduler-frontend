@@ -13,7 +13,7 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-// --- 타입 정의 (변경 없음) ---
+// --- 타입 정의 ---
 type Schedule = {
   code: string;
   title: string;
@@ -32,30 +32,25 @@ type Assignment = {
 };
 
 // --- 스타일 컴포넌트 ---
-
 const Container = styled.div`
   max-width: 1200px;
   margin: 40px auto;
   padding: 0 24px;
 `;
-
 const PageHeader = styled.div`
   margin-bottom: 24px;
 `;
-
 const PageTitle = styled.h1`
   font-size: 32px;
   font-weight: 700;
   color: #2c3e50;
   margin: 0 0 8px 0;
 `;
-
 const PageSubtitle = styled.p`
   font-size: 16px;
   color: #7f8c8d;
   margin: 0;
 `;
-
 const Section = styled.div`
   background: #ffffff;
   border-radius: 12px;
@@ -64,14 +59,12 @@ const Section = styled.div`
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   user-select: none;
 `;
-
 const SectionTitle = styled.h3`
   font-size: 22px;
   font-weight: 600;
   color: #34495e;
   margin: 0 0 20px 0;
 `;
-
 const Input = styled.input`
   width: 100%;
   padding: 12px 16px;
@@ -80,34 +73,29 @@ const Input = styled.input`
   border-radius: 8px;
   box-sizing: border-box;
   transition: border-color 0.2s, box-shadow 0.2s;
-
   &:focus {
     outline: none;
     border-color: #3498db;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
   }
 `;
-
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
   cursor: pointer;
   font-size: 15px;
   color: #34495e;
-
   input {
     margin-right: 8px;
     width: 16px;
     height: 16px;
   }
 `;
-
 const ButtonGroup = styled.div`
   display: flex;
   gap: 12px;
   margin-top: 24px;
 `;
-
 const Button = styled.button<{ primary?: boolean; danger?: boolean }>`
   padding: 12px 24px;
   font-size: 16px;
@@ -116,37 +104,31 @@ const Button = styled.button<{ primary?: boolean; danger?: boolean }>`
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s, transform 0.1s;
-  
   ${props => props.primary && css`
     background-color: #3498db;
     color: white;
     &:hover { background-color: #2980b9; }
   `}
-
   ${props => props.danger && css`
     background-color: #e74c3c;
     color: white;
     &:hover { background-color: #c0392b; }
   `}
-
   ${props => !props.primary && !props.danger && css`
     background-color: #ecf0f1;
     color: #34495e;
     &:hover { background-color: #bdc3c7; }
   `}
-
   &:active {
     transform: translateY(1px);
   }
 `;
-
 const GridWrapper = styled.div`
   overflow-x: auto;
   border: 1px solid #e0e0e0; 
   border-radius: 8px;
   overflow: hidden;
 `;
-
 const GridContainer = styled.div<{ columns: number }>`
   display: grid;
   grid-template-columns: 60px repeat(${props => props.columns}, 1fr);
@@ -155,7 +137,6 @@ const GridContainer = styled.div<{ columns: number }>`
   border-left: 1px solid #e0e0e0;
   background: #e8f5e9;
 `;
-
 const GridCell = styled.div`
   display: flex;
   align-items: center;
@@ -165,13 +146,11 @@ const GridCell = styled.div`
   font-weight: 500;
   background-color: #f9fafb;
   box-sizing: border-box;
-  padding: 0; /* 모든 셀에 padding 0 */
-  min-width: 60px; /* 필요하다면 명시적으로 고정 */
+  padding: 0;
+  min-width: 60px;
   width: 100%;
-  height: 30px; /* 모든 셀 높이도 고정 */
+  height: 30px;
 `;
-
-
 const GridHeaderCell = styled(GridCell)`
   height: 40px;
   font-weight: 600;
@@ -181,7 +160,6 @@ const GridHeaderCell = styled(GridCell)`
   box-sizing: border-box;
   padding: 0;
 `;
-
 const GridTimeCell = styled(GridCell)`
   height: 60px;
   font-weight: 600;
@@ -191,22 +169,19 @@ const GridTimeCell = styled(GridCell)`
   box-sizing: border-box;
   padding: 0;
 `;
-
 const GridSlotColumn = styled.div`
   display: flex;
   flex-direction: column;
 `;
-
-const getSlotStyle = (state: '0' | '1' | 'B' | string) => {
+const getSlotStyle = (state: '0' | '1' | 'B' | 'ASSIGNED' | string) => {
   switch (state) {
     case '1': return css` background-color: rgba(232,245,233,0.7); color: #2e7d32;`; // 가능
     case '0': return css` background-color: rgba(255,235,238,0.7); color: #c62828;`; // 불가능
     case 'B': return css` background-color: rgba(255,253,231,0.7); color: #f57f17;`; // 버퍼
-    default: return css` background-color: rgba(209,236,241,0.7); color: #0c5460; font-weight: 600;`; // 배정됨
+    case 'ASSIGNED': return css` background-color: #d1ecf1; color: #17637c; font-weight: 700;`;
+    default: return css` background-color: rgba(209,236,241,0.7); color: #0c5460; font-weight: 600;`;
   }
 };
-
-// 기존 SlotCell의 높이/width 중복 정의 제거!
 const GridSlotCell = styled(GridCell)<{
   state: string;
   isInput: boolean;
@@ -225,33 +200,28 @@ const GridSlotCell = styled(GridCell)<{
     filter: ${props => props.isInput ? "brightness(0.95)" : "none"};
   }
 `;
-
 const ParticipantGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
 `;
-
 const ParticipantCard = styled.div`
   border: 1px solid #dfe4ea;
   padding: 16px;
   border-radius: 8px;
   text-align: center;
   transition: box-shadow 0.2s, border-color 0.2s;
-  
   h4 {
     margin: 0 0 12px 0;
     color: #2c3e50;
     cursor: pointer;
     word-break: break-all;
   }
-
   &:hover {
     border-color: #3498db;
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   }
 `;
-
 const SmallButton = styled.button`
   padding: 6px 12px;
   font-size: 13px;
@@ -261,12 +231,10 @@ const SmallButton = styled.button`
   border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
-
   &:hover {
     background-color: #c0392b;
   }
 `;
-
 const LoadingContainer = styled.div`
   text-align: center;
   padding: 80px;
@@ -275,6 +243,26 @@ const LoadingContainer = styled.div`
 `;
 
 // --- 컴포넌트 ---
+
+// --- slot별 배정자 리스트로 가공 ---
+function groupAssignmentsBySlot(assignments: Assignment[], daysCount: number, hoursCount: number) {
+  const slotAssignees: string[][][] = Array.from({ length: daysCount }, () =>
+    Array.from({ length: hoursCount }, () => [])
+  );
+  assignments.forEach((a) => {
+    const { day, hourIndex } = a.slot;
+    if (
+      day >= 0 &&
+      day < daysCount &&
+      hourIndex >= 0 &&
+      hourIndex < hoursCount &&
+      a.assignee
+    ) {
+      slotAssignees[day][hourIndex].push(a.assignee);
+    }
+  });
+  return slotAssignees;
+}
 
 function ScheduleDetail() {
   const { code } = useParams<{ code: string }>();
@@ -288,7 +276,7 @@ function ScheduleDetail() {
   const [availabilityBits, setAvailabilityBits] = useState("");
 
   const [considerLectureGap, setConsiderLectureGap] = useState(true);
-  const [applyTravelTimeBuffer, setApplyTravelTimeBuffer] = useState(false);
+  const [applyTravelTimeBuffer, setApplyTravelTimeBuffer] = useState(true);
 
   const isDragging = useRef(false);
   const [dragStartValue, setDragStartValue] = useState<boolean | null>(null);
@@ -491,12 +479,9 @@ function ScheduleDetail() {
                   {[0, 1].map((_, halfHourIndex) => {
                     const bitIndex = (dayIndex * hours.length * 2) + (hourIndex * 2) + halfHourIndex;
                     const cellState = bitsToRender[bitIndex] ?? '0';
-
-                    // 마지막 열/행인지 체크
                     const isLastCol = dayIndex === days.length - 1;
                     const isLastRow =
                       hourIndex === hours.length - 1 && halfHourIndex === 1;
-
                     return (
                       <GridSlotCell
                         key={halfHourIndex}
@@ -520,6 +505,7 @@ function ScheduleDetail() {
     );
   };
 
+  // --- slot별 여러 명 표시하는 최적화 결과 그리드 ---
   const renderAssignments = (currentSchedule: Schedule) => {
     if (!assignments.length) return null;
     const days = ["월", "화", "수", "목", "금"];
@@ -527,6 +513,8 @@ function ScheduleDetail() {
       { length: currentSchedule.endHour - currentSchedule.startHour },
       (_, i) => currentSchedule.startHour + i
     );
+    const slotAssignees = groupAssignmentsBySlot(assignments, days.length, hours.length);
+
     return (
       <Section>
         <SectionTitle>최적화 결과</SectionTitle>
@@ -542,25 +530,24 @@ function ScheduleDetail() {
                 {days.map((_, dayIndex) => {
                   const isLastCol = dayIndex === days.length - 1;
                   const isLastRow = hourIndex === hours.length - 1;
-                  const assignment = assignments.find(
-                    (a) =>
-                      a.slot.day === dayIndex &&
-                      a.slot.hourIndex === hourIndex
-                  );
+                  const assignees = slotAssignees[dayIndex][hourIndex];
                   return (
                     <GridSlotCell
                       key={dayIndex}
-                      state={assignment?.assignee ?? "0"}
+                      state={assignees.length > 0 ? "ASSIGNED" : "0"}
                       isInput={false}
                       isLastCol={isLastCol}
                       isLastRow={isLastRow}
                       style={{
                         height: "60px",
-                        whiteSpace: "normal",
+                        whiteSpace: "pre-line",
                         padding: "4px",
+                        fontWeight: assignees.length > 0 ? 600 : undefined,
                       }}
                     >
-                      {assignment?.assignee || "미배정"}
+                      {assignees.length > 0
+                        ? assignees.join("\n")
+                        : "미배정"}
                     </GridSlotCell>
                   );
                 })}
@@ -643,7 +630,7 @@ function ScheduleDetail() {
                   </h4>
                   <SmallButton
                     onClick={e => {
-                      e.stopPropagation();  // 삭제버튼만 클릭되면 버블링 막기!
+                      e.stopPropagation();
                       handleDeleteAvailability(avail.id);
                     }}
                   >

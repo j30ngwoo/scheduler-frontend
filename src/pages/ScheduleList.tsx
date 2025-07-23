@@ -12,16 +12,7 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-// 타입 정의
-type Schedule = {
-  code: string;
-  title: string;
-  startHour: number;
-  endHour: number;
-  maxHoursPerParticipant: number;
-};
-
-// 스타일 컴포넌트
+// 스타일 컴포넌트 (변경 없음, 기존 그대로)
 const Container = styled.div`
   max-width: 800px;
   margin: 40px auto;
@@ -219,6 +210,15 @@ const LoadingContainer = styled.div`
   font-size: 18px;
   color: #888;
 `;
+type Schedule = {
+  code: string;
+  title: string;
+  startHour: number;
+  endHour: number;
+  maxHoursPerParticipant: number | null;
+  minHoursPerParticipant: number | null;
+  participantsPerSlot: number;
+};
 
 function ScheduleList() {
   const navigate = useNavigate();
@@ -227,10 +227,11 @@ function ScheduleList() {
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
-  // 기본값 12 ~ 17시
   const [startHour, setStartHour] = useState(12);
   const [endHour, setEndHour] = useState(17);
-  const [maxHours, setMaxHours] = useState(5);
+  const [maxHours, setMaxHours] = useState(2);
+  const [minHours, setMinHours] = useState(1);
+  const [participantsPerSlot, setParticipantsPerSlot] = useState(1);
 
   const fetchSchedules = async () => {
     try {
@@ -252,6 +253,8 @@ function ScheduleList() {
     setStartHour(12);
     setEndHour(17);
     setMaxHours(2);
+    setMinHours(1);
+    setParticipantsPerSlot(1);
     setShowForm(true);
   };
 
@@ -266,13 +269,27 @@ function ScheduleList() {
       alert("최대 가능 시간은 1 이상이어야 합니다.");
       return;
     }
+    if (minHours < 0) {
+      alert("최소 가능 시간은 0 이상이어야 합니다.");
+      return;
+    }
+    if (participantsPerSlot < 1) {
+      alert("한 슬롯당 최대 인원은 1명 이상이어야 합니다.");
+      return;
+    }
+    if (minHours > maxHours) {
+      alert("최소 가능 시간이 최대 가능 시간보다 클 수 없습니다.");
+      return;
+    }
 
     try {
       await api.post("/api/schedules", {
         title,
         startHour,
         endHour,
+        minHoursPerParticipant: minHours,
         maxHoursPerParticipant: maxHours,
+        participantsPerSlot,
       });
       alert("시간표가 생성되었습니다!");
       setShowForm(false);
@@ -299,15 +316,38 @@ function ScheduleList() {
     }
   };
 
-  if (loading) return <LoadingContainer>불러오는 중...</LoadingContainer>;
-
-  const numberInput = (value: number, setter: (v: number) => void, min: number, max: number) => (
-    <NumberButtonContainer>
-      <NumberButton type="button" onClick={() => setter(Math.max(min, value - 1))}>–</NumberButton>
-      <NumberDisplay>{value}</NumberDisplay>
-      <NumberButton type="button" onClick={() => setter(Math.min(max, value + 1))}>+</NumberButton>
-    </NumberButtonContainer>
+  // --- 셀렉트박스 input 유틸 ---
+  const selectInput = (
+    value: number,
+    setter: (v: number) => void,
+    min: number,
+    max: number,
+    step: number = 1
+  ) => (
+    <select
+      value={value}
+      onChange={e => setter(Number(e.target.value))}
+      style={{
+        width: 70,
+        height: 36,
+        fontSize: 16,
+        border: '1px solid #d9d9d9',
+        borderRadius: 6,
+        textAlign: 'center',
+        padding: '0 8px',
+        background: '#fff',
+        margin: '0 6px',
+      }}
+    >
+      {Array.from({ length: Math.floor((max - min) / step + 1) }, (_, i) => min + i * step)
+        .map(v => (
+          <option key={v} value={v}>{v}</option>
+        ))
+      }
+    </select>
   );
+
+  if (loading) return <LoadingContainer>불러오는 중...</LoadingContainer>;
 
   return (
     <>
@@ -333,14 +373,22 @@ function ScheduleList() {
             </div>
             <FormRow>
               <Label>시작 시간</Label>
-              {numberInput(startHour, setStartHour, 0, 23)}
+              {selectInput(startHour, setStartHour, 0, 23)}
               <Label>~ 종료 시간</Label>
-              {numberInput(endHour, setEndHour, 0, 23)}
+              {selectInput(endHour, setEndHour, 1, 23)}
             </FormRow>
             <FormRow>
-              <Label>참가자별 최대 가능 시간</Label>
-              {numberInput(maxHours, setMaxHours, 1, 24)}
+              <Label>참가자별 최소 가능 시간</Label>
+              {selectInput(minHours, setMinHours, 0, 24)}
               <Label>시간</Label>
+              <Label style={{ marginLeft: 24 }}>참가자별 최대 가능 시간</Label>
+              {selectInput(maxHours, setMaxHours, 1, 24)}
+              <Label>시간</Label>
+            </FormRow>
+            <FormRow>
+              <Label>한 슬롯당 최대 인원</Label>
+              {selectInput(participantsPerSlot, setParticipantsPerSlot, 1, 5)}
+              <Label>명</Label>
             </FormRow>
             <ButtonGroup>
               <SubmitButton type="submit">생성</SubmitButton>
@@ -363,7 +411,13 @@ function ScheduleList() {
                 <ScheduleInfo>
                   <ScheduleTitle>{s.title}</ScheduleTitle>
                   <ScheduleDetails>
-                    {s.startHour}:00 ~ {s.endHour}:00 (참가자별 최대 {s.maxHoursPerParticipant}시간)
+                    {s.startHour}:00 ~ {s.endHour}:00
+                    <br />
+                    <span>
+                      참가자별 <b>최소 {s.minHoursPerParticipant ?? 0}</b>시간 ~
+                      <b> 최대 {s.maxHoursPerParticipant ?? 0}</b>시간,{" "}
+                      <b>한 슬롯당 최대 {s.participantsPerSlot}명</b>
+                    </span>
                   </ScheduleDetails>
                 </ScheduleInfo>
                 <DeleteButton
