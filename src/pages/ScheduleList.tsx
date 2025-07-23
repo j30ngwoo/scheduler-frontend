@@ -85,34 +85,6 @@ const Label = styled.span`
   color: #555;
 `;
 
-const NumberButtonContainer = styled.div`
-  display: flex;
-  align-items: center;
-`;
-
-const NumberButton = styled.button`
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid #d9d9d9;
-  font-size: 18px;
-  background-color: #fff;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-  margin: 0 4px;
-
-  &:hover {
-    background-color: #f0f0f0;
-  }
-`;
-
-const NumberDisplay = styled.span`
-  width: 36px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 500;
-`;
-
 const ButtonGroup = styled.div`
   margin-top: 24px;
   display: flex;
