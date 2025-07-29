@@ -275,8 +275,8 @@ function ScheduleDetail() {
   const [participantName, setParticipantName] = useState("");
   const [availabilityBits, setAvailabilityBits] = useState("");
 
-  const [considerLectureGap, setConsiderLectureGap] = useState(true);
-  const [applyTravelTimeBuffer, setApplyTravelTimeBuffer] = useState(true);
+  const [isLectureDayWorkPriority, setIsLectureDayWorkPriority] = useState(true);
+  const [applyTravelTimeBufferForOptimize, setApplyTravelTimeBufferForOptimize] = useState(true);
 
   const isDragging = useRef(false);
   const [dragStartValue, setDragStartValue] = useState<boolean | null>(null);
@@ -333,40 +333,17 @@ function ScheduleDetail() {
     }
   }, [participantName, schedule]);
 
+
   const handleAvailabilitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!participantName || !availabilityBits) {
       alert("근무자 이름과 가능한 이름을 입력해주세요.");
       return;
     }
-
-    let submissionBits = availabilityBits;
-    if (applyTravelTimeBuffer && schedule) {
-      const hoursPerDay = schedule.endHour - schedule.startHour;
-      const slotsPerDay = hoursPerDay * 2;
-      const bitsArray = availabilityBits.split('');
-      const originalBits = [...bitsArray];
-
-      for (let i = 0; i < originalBits.length; i++) {
-        if (originalBits[i] === '0') {
-          const currentDay = Math.floor(i / slotsPerDay);
-          const prevIndex = i - 1;
-          if (prevIndex >= 0 && Math.floor(prevIndex / slotsPerDay) === currentDay) {
-            bitsArray[prevIndex] = '0';
-          }
-          const nextIndex = i + 1;
-          if (nextIndex < originalBits.length && Math.floor(nextIndex / slotsPerDay) === currentDay) {
-            bitsArray[nextIndex] = '0';
-          }
-        }
-      }
-      submissionBits = bitsArray.join('');
-    }
-
     try {
       await api.post(`/api/schedules/${code}/availability`, {
         participantName,
-        availabilityBinary: submissionBits,
+        availabilityBinary: availabilityBits,
       });
       alert("시간이 성공적으로 제출되었습니다!");
       await fetchAvailabilities();
@@ -379,7 +356,10 @@ function ScheduleDetail() {
   const handleOptimize = async () => {
     if (!code) return;
     try {
-      const query = `considerLectureGap=${considerLectureGap}`;
+      // 쿼리스트링 방식
+      const query =
+        `isLectureDayWorkPriority=${isLectureDayWorkPriority}` +
+        `&applyTravelTimeBuffer=${applyTravelTimeBufferForOptimize}`;
       const res = await api.get(`/api/schedules/${code}/optimize?${query}`);
       setAssignments(res.data.data || []);
     } catch (err) {
@@ -439,32 +419,12 @@ function ScheduleDetail() {
     setDragStartValue(null);
   };
 
-  const displayBits = useMemo(() => {
-    if (!applyTravelTimeBuffer || !schedule) return availabilityBits;
-    const hoursPerDay = schedule.endHour - schedule.startHour;
-    const slotsPerDay = hoursPerDay * 2;
-    const displayArray = availabilityBits.split('');
-
-    for (let i = 0; i < availabilityBits.length; i++) {
-      if (availabilityBits[i] === '0') {
-        const currentDay = Math.floor(i / slotsPerDay);
-        const prevIndex = i - 1;
-        if (prevIndex >= 0 && Math.floor(prevIndex / slotsPerDay) === currentDay && availabilityBits[prevIndex] === '1') {
-          displayArray[prevIndex] = 'B';
-        }
-        const nextIndex = i + 1;
-        if (nextIndex < availabilityBits.length && Math.floor(nextIndex / slotsPerDay) === currentDay && availabilityBits[nextIndex] === '1') {
-          displayArray[nextIndex] = 'B';
-        }
-      }
-    }
-    return displayArray.join('');
-  }, [availabilityBits, applyTravelTimeBuffer, schedule]);
+  // displayBits: 입력 그리드의 "이동시간 고려" 시각화는 이제 없음!
 
   const renderAvailabilityGrid = (currentSchedule: Schedule, bits: string, isInputGrid: boolean = false) => {
     const days = ["월", "화", "수", "목", "금"];
     const hours = Array.from({ length: currentSchedule.endHour - currentSchedule.startHour }, (_, i) => currentSchedule.startHour + i);
-    const bitsToRender = isInputGrid ? displayBits : bits;
+    const bitsToRender = bits;
 
     return (
       <GridWrapper>
@@ -591,14 +551,8 @@ function ScheduleDetail() {
               required
               style={{ marginBottom: "16px" }}
             />
-            <CheckboxLabel style={{ marginBottom: "20px" }}>
-              <input
-                type="checkbox"
-                checked={applyTravelTimeBuffer}
-                onChange={(e) => setApplyTravelTimeBuffer(e.target.checked)}
-              />
-              이동 시간 고려 (불가능한 시간 전후로 버퍼 추가)
-            </CheckboxLabel>
+
+            {/* 이동 시간 고려 토글은 삭제됨 */}
 
             {renderAvailabilityGrid(schedule, availabilityBits, true)}
 
@@ -644,11 +598,19 @@ function ScheduleDetail() {
 
         <Section>
           <SectionTitle>최적화</SectionTitle>
+          <CheckboxLabel style={{ marginBottom: "12px" }}>
+            <input
+              type="checkbox"
+              checked={applyTravelTimeBufferForOptimize}
+              onChange={(e) => setApplyTravelTimeBufferForOptimize(e.target.checked)}
+            />
+            강의실 이동 시간 고려
+          </CheckboxLabel>
           <CheckboxLabel style={{ marginBottom: "20px" }}>
             <input
               type="checkbox"
-              checked={considerLectureGap}
-              onChange={(e) => setConsiderLectureGap(e.target.checked)}
+              checked={isLectureDayWorkPriority}
+              onChange={(e) => setIsLectureDayWorkPriority(e.target.checked)}
             />
             수업이 있는 날에 근무를 우선 배정
           </CheckboxLabel>
