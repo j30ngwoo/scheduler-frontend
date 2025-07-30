@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import styled, { createGlobalStyle, css } from "styled-components";
 
@@ -19,8 +19,11 @@ type Schedule = {
   title: string;
   startHour: number;
   endHour: number;
-  maxHoursPerParticipant: number;
+  minHoursPerParticipant: number | null;
+  maxHoursPerParticipant: number | null;
+  participantsPerSlot: number;
 };
+
 type Availability = {
   id: number;
   participantName: string;
@@ -32,14 +35,33 @@ type Assignment = {
 };
 
 // --- 스타일 컴포넌트 ---
+const BackButton = styled.button`
+  background: none;
+  border: none;
+  color: #8a8a8a;
+  font-size: 26px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 8px;
+  margin-left: -6px;
+  transition: color 0.2s;
+  &:hover {
+    color: #5a5a5a;
+  }
+`
+
 const Container = styled.div`
+  position: relative;
   max-width: 1200px;
   margin: 40px auto;
   padding: 0 24px;
 `;
 const PageHeader = styled.div`
   margin-bottom: 24px;
-`;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+`
 const PageTitle = styled.h1`
   font-size: 32px;
   font-weight: 700;
@@ -265,6 +287,7 @@ function groupAssignmentsBySlot(assignments: Assignment[], daysCount: number, ho
 }
 
 function ScheduleDetail() {
+  const navigate = useNavigate();
   const { code } = useParams<{ code: string }>();
   const [schedule, setSchedule] = useState<Schedule | null>(null);
   const [availabilities, setAvailabilities] = useState<Availability[]>([]);
@@ -280,6 +303,10 @@ function ScheduleDetail() {
 
   const isDragging = useRef(false);
   const [dragStartValue, setDragStartValue] = useState<boolean | null>(null);
+
+  const [minHours, setMinHours] = useState(1);
+  const [maxHours, setMaxHours] = useState(2);
+  const [participantsPerSlot, setParticipantsPerSlot] = useState(2);
 
   const fetchAvailabilities = async () => {
     if (!code) return;
@@ -333,6 +360,13 @@ function ScheduleDetail() {
     }
   }, [participantName, schedule]);
 
+  useEffect(() => {
+    if (schedule) {
+      setMinHours(schedule.minHoursPerParticipant ?? 1);
+      setMaxHours(schedule.maxHoursPerParticipant ?? 2);
+      setParticipantsPerSlot(schedule.participantsPerSlot ?? 2);
+    }
+  }, [schedule]);
 
   const handleAvailabilitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,17 +387,27 @@ function ScheduleDetail() {
     }
   };
 
+  // 일정 최적화 버튼 클릭 시: 옵션 저장 → 최적화!
   const handleOptimize = async () => {
     if (!code) return;
     try {
-      // 쿼리스트링 방식
-      const query =
-        `isLectureDayWorkPriority=${isLectureDayWorkPriority}` +
-        `&applyTravelTimeBuffer=${applyTravelTimeBufferForOptimize}`;
-      const res = await api.get(`/api/schedules/${code}/optimize?${query}`);
+      // 옵션 저장
+      await api.put(`/api/schedules/${code}/options`, {
+        minHoursPerParticipant: minHours,
+        maxHoursPerParticipant: maxHours,
+        participantsPerSlot,
+      });
+      // 최적화
+      const res = await api.post(`/api/schedules/${code}/optimize`, {
+        isLectureDayWorkPriority,
+        applyTravelTimeBuffer: applyTravelTimeBufferForOptimize,
+      });
       setAssignments(res.data.data || []);
+      alert("최적화가 완료되었습니다!");
+      const scheduleRes = await api.get(`/api/schedules/${code}`);
+      setSchedule(scheduleRes.data.data);
     } catch (err) {
-      alert("일정 최적화에 실패했습니다.");
+      alert("옵션 저장 또는 일정 최적화에 실패했습니다.");
     }
   };
 
@@ -418,8 +462,6 @@ function ScheduleDetail() {
     isDragging.current = false;
     setDragStartValue(null);
   };
-
-  // displayBits: 입력 그리드의 "이동시간 고려" 시각화는 이제 없음!
 
   const renderAvailabilityGrid = (currentSchedule: Schedule, bits: string, isInputGrid: boolean = false) => {
     const days = ["월", "화", "수", "목", "금"];
@@ -532,11 +574,15 @@ function ScheduleDetail() {
     <>
       <GlobalStyle />
       <Container onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+        <BackButton onClick={() => navigate(-1)} aria-label="뒤로가기">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" style={{display:"block"}} xmlns="http://www.w3.org/2000/svg">
+            <path d="M15 19L8 12L15 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </BackButton>
         <PageHeader>
           <PageTitle>{schedule.title}</PageTitle>
           <PageSubtitle>
-            시간 범위: {schedule.startHour}:00 - {schedule.endHour}:00 / 참여자당 최대{" "}
-            {schedule.maxHoursPerParticipant}시간
+            {schedule.startHour}:00 - {schedule.endHour}:00
           </PageSubtitle>
         </PageHeader>
 
@@ -598,6 +644,28 @@ function ScheduleDetail() {
 
         <Section>
           <SectionTitle>최적화</SectionTitle>
+          <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 16 }}>
+            <label>
+              참가자별 최소 가능 시간
+              <select value={minHours} onChange={e => setMinHours(Number(e.target.value))} style={{ margin: "0 6px" }}>
+                {[...Array(25).keys()].map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              시간
+            </label>
+            <label>
+              참가자별 최대 가능 시간
+              <select value={maxHours} onChange={e => setMaxHours(Number(e.target.value))} style={{ margin: "0 6px" }}>
+                {[...Array(25).keys()].slice(1).map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+              시간
+            </label>
+            <label>
+              한 슬롯당 최대 인원
+              <select value={participantsPerSlot} onChange={e => setParticipantsPerSlot(Number(e.target.value))} style={{ margin: "0 6px" }}>
+                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}명</option>)}
+              </select>
+            </label>
+          </div>
           <CheckboxLabel style={{ marginBottom: "12px" }}>
             <input
               type="checkbox"

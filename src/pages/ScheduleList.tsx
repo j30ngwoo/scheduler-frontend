@@ -259,9 +259,9 @@ function ScheduleList() {
         title,
         startHour,
         endHour,
-        minHoursPerParticipant: minHours,
-        maxHoursPerParticipant: maxHours,
-        participantsPerSlot,
+        minHoursPerParticipant: 1,
+        maxHoursPerParticipant: 2,
+        participantsPerSlot: 2,
       });
       alert("시간표가 생성되었습니다!");
       setShowForm(false);
@@ -348,19 +348,6 @@ function ScheduleList() {
               {selectInput(startHour, setStartHour, 0, 23)}
               <Label>~ 종료 시간</Label>
               {selectInput(endHour, setEndHour, 1, 23)}
-            </FormRow>
-            <FormRow>
-              <Label>참가자별 최소 가능 시간</Label>
-              {selectInput(minHours, setMinHours, 0, 24)}
-              <Label>시간</Label>
-              <Label style={{ marginLeft: 24 }}>참가자별 최대 가능 시간</Label>
-              {selectInput(maxHours, setMaxHours, 1, 24)}
-              <Label>시간</Label>
-            </FormRow>
-            <FormRow>
-              <Label>한 슬롯당 최대 인원</Label>
-              {selectInput(participantsPerSlot, setParticipantsPerSlot, 1, 5)}
-              <Label>명</Label>
             </FormRow>
             <ButtonGroup>
               <SubmitButton type="submit">생성</SubmitButton>
