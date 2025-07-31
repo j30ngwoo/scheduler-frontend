@@ -48,7 +48,20 @@ const BackButton = styled.button`
   &:hover {
     color: #5a5a5a;
   }
-`
+`;
+const DownloadButton = styled.button`
+  margin-top: 12px;
+  padding: 10px 18px;
+  background: #4ca966;
+  color: #fff;
+  font-size: 15px;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+  &:hover { background: #357943; }
+`;
 
 const Container = styled.div`
   position: relative;
@@ -61,7 +74,7 @@ const PageHeader = styled.div`
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-`
+`;
 const PageTitle = styled.h1`
   font-size: 32px;
   font-weight: 700;
@@ -264,7 +277,45 @@ const LoadingContainer = styled.div`
   color: #7f8c8d;
 `;
 
-// --- 컴포넌트 ---
+// --- 참가자별 배정 현황 표 스타일 ---
+const AssignmentSummaryTable = styled.table`
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  overflow: hidden;
+`;
+
+const AssignmentSummaryTh = styled.th`
+  padding: 12px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 16px;
+  background: #f2f5fa;
+`;
+
+const AssignmentSummaryTd = styled.td<{ belowMin?: boolean }>`
+  padding: 12px;
+  text-align: center;
+  background: ${({ belowMin }) => belowMin ? "#ffe5e5" : "white"};
+  color: ${({ belowMin }) => belowMin ? "#c62828" : "#222"};
+  font-weight: ${({ belowMin }) => belowMin ? 700 : 400};
+  border-bottom: 1px solid #f0f0f0;
+  white-space: pre-line;
+`;
+
+const AssignmentSummaryNameTd = styled(AssignmentSummaryTd)`
+  text-align: left;
+`;
+
+const AssignmentSummaryNotice = styled.div`
+  color: #c62828;
+  margin-top: 10px;
+  font-size: 14px;
+`;
 
 // --- slot별 배정자 리스트로 가공 ---
 function groupAssignmentsBySlot(assignments: Assignment[], daysCount: number, hoursCount: number) {
@@ -285,6 +336,7 @@ function groupAssignmentsBySlot(assignments: Assignment[], daysCount: number, ho
   });
   return slotAssignees;
 }
+
 
 function ScheduleDetail() {
   const navigate = useNavigate();
@@ -317,7 +369,49 @@ function ScheduleDetail() {
       console.error("가능한 시간을 가져오는데 실패했습니다:", err);
     }
   };
-  
+
+  const handleDownloadOptimizedCSV = () => {
+    if (!assignments.length || !schedule) return;
+    const days = ["월", "화", "수", "목", "금"];
+    const hours = Array.from({ length: schedule.endHour - schedule.startHour }, (_, i) => schedule.startHour + i);
+
+    // 1. 헤더
+    let csv = "시간";
+    days.forEach(day => { csv += `,${day}`; });
+    csv += "\n";
+
+    // 2. slot별로 표 채우기 (각 칸은 "이름1, 이름2" 형태, 사람 이름 여러명 있으면 쉼표로 묶고, 반드시 ""로 감싸줌)
+    // hours: 시간 단위(예: 12,13,14 ...)
+    hours.forEach((hour, hourIndex) => {
+      // 행 첫번째 칸 = 시간대 (예: "12:00-13:00")
+      const start = hour;
+      const end = hour + 1;
+      let row = `${start}:00-${end}:00`;
+      for (let dayIdx = 0; dayIdx < days.length; dayIdx++) {
+        // 해당 시간/요일에 배정된 사람 이름
+        const names = assignments
+          .filter(a => a.slot.day === dayIdx && a.slot.hourIndex === hourIndex)
+          .map(a => a.assignee)
+          .sort();
+        // 쉼표 구분으로 붙이고, 반드시 ""로 감싸줌(엑셀에서 한 셀로 인식)
+        row += `,"${names.join(', ')}"`;
+      }
+      csv += row + "\n";
+    });
+
+    // blob 만들고 다운로드
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }); // BOM 붙여서 한글 깨짐 방지
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schedule_optimized.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+
   // 초기 데이터 가져오기
   useEffect(() => {
     if (!code) {
@@ -557,6 +651,90 @@ function ScheduleDetail() {
             ))}
           </GridContainer>
         </GridWrapper>
+        <DownloadButton onClick={handleDownloadOptimizedCSV}>
+          최적화 결과 다운로드
+        </DownloadButton>
+      </Section>
+    );
+  };
+
+  
+
+  // --- 참가자별 배정 현황 표 ---
+  const renderAssignmentSummary = () => {
+    if (!assignments.length) return null;
+    const dayNames = ["월", "화", "수", "목", "금"];
+    const minHours = schedule?.minHoursPerParticipant ?? 1;
+
+    // 이름별 할당 slot 및 시간대 정리
+    const participantMap: Record<string, { count: number; slots: Assignment[] }> = {};
+    assignments.forEach(a => {
+      if (!participantMap[a.assignee]) {
+        participantMap[a.assignee] = { count: 0, slots: [] };
+      }
+      participantMap[a.assignee].count += 1;
+      participantMap[a.assignee].slots.push(a);
+    });
+
+    // 모든 이름(혹시 할당 없는 참여자도 포함)
+    const allNames = Array.from(
+      new Set([
+        ...assignments.map(a => a.assignee),
+        ...availabilities.map(a => a.participantName)
+      ])
+    );
+
+    // "월 12-13" 포맷
+    function getSlotString(slot: { day: number; hourIndex: number; start: string; end: string }) {
+      const day = dayNames[slot.day];
+      const startHour = slot.start.split(":")[0];
+      const endHour = slot.end.split(":")[0];
+      return `${day} ${startHour}-${endHour}`;
+    }
+
+    return (
+      <Section>
+        <SectionTitle>참가자별 배정 현황</SectionTitle>
+        <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+          <AssignmentSummaryTable>
+            <thead>
+              <tr>
+                <AssignmentSummaryTh style={{ textAlign: "left" }}>이름</AssignmentSummaryTh>
+                <AssignmentSummaryTh>배정 시간</AssignmentSummaryTh>
+                <AssignmentSummaryTh>일정</AssignmentSummaryTh>
+              </tr>
+            </thead>
+            <tbody>
+              {allNames.map(name => {
+                const info = participantMap[name];
+                const count = info ? info.count : 0;
+                const slots = info ? info.slots : [];
+                const belowMin = count < minHours;
+
+                // 요일/시간 정렬
+                const slotStrs = slots
+                  .sort((a, b) => {
+                    if (a.slot.day !== b.slot.day) return a.slot.day - b.slot.day;
+                    return parseInt(a.slot.start) - parseInt(b.slot.start);
+                  })
+                  .map(a => getSlotString(a.slot));
+
+                return (
+                  <tr key={name}>
+                    <AssignmentSummaryNameTd belowMin={belowMin}>{name}</AssignmentSummaryNameTd>
+                    <AssignmentSummaryTd belowMin={belowMin}>{count}시간</AssignmentSummaryTd>
+                    <AssignmentSummaryTd belowMin={belowMin}>
+                      {slotStrs.length > 0 ? slotStrs.join(", ") : "-"}
+                    </AssignmentSummaryTd>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </AssignmentSummaryTable>
+          <AssignmentSummaryNotice>
+            * 배정 시간이 최저시간보다 적으면 빨간색으로 표시됩니다.
+          </AssignmentSummaryNotice>
+        </div>
       </Section>
     );
   };
@@ -587,7 +765,7 @@ function ScheduleDetail() {
         </PageHeader>
 
         <Section>
-          <SectionTitle>가능한 일정 입력</SectionTitle>
+          <SectionTitle>참가자 일정 입력</SectionTitle>
           <form onSubmit={handleAvailabilitySubmit}>
             <Input
               type="text"
@@ -598,13 +776,11 @@ function ScheduleDetail() {
               style={{ marginBottom: "16px" }}
             />
 
-            {/* 이동 시간 고려 토글은 삭제됨 */}
-
             {renderAvailabilityGrid(schedule, availabilityBits, true)}
 
             <ButtonGroup>
               <Button primary type="submit">
-                가능한 일정 제출
+                참가자 일정 제출
               </Button>
               <Button type="button" onClick={handleNewAvailability}>
                 초기화
@@ -688,6 +864,7 @@ function ScheduleDetail() {
         </Section>
 
         {renderAssignments(schedule)}
+        {renderAssignmentSummary()}
       </Container>
     </>
   );
